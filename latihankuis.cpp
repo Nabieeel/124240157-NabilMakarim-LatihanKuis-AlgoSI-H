@@ -1,8 +1,4 @@
 #include <iostream>
-#include <fstream>
-#include <cstring>
-#include <vector>
-#include <algorithm>
 
 using namespace std;
 
@@ -33,7 +29,7 @@ bool login()
 void tambahBuku()
 {
     Buku buku;
-    ofstream file("data.dat", ios::app | ios::binary);
+    FILE* file = fopen("data.dat", "ab");
 
     cout << "Masukkan ID Buku: ";
     cin >> buku.id;
@@ -45,40 +41,44 @@ void tambahBuku()
     cout << "Masukkan Stok Buku: ";
     cin >> buku.stok;
 
-    file.write(reinterpret_cast<char *>(&buku), sizeof(Buku));
-    file.close();
+    fwrite(&buku, sizeof(Buku), 1, file);
+    fclose(file);
 
     cout << "Data buku berhasil ditambahkan!\n";
 }
 
 void tampilkanBuku()
 {
-    vector<Buku> daftarBuku;
     Buku buku;
-    ifstream file("data.dat", ios::binary);
+    FILE* file = fopen("data.dat", "rb");
+    Buku daftarBuku[100];
+    int count = 0;
 
-    while (file.read(reinterpret_cast<char *>(&buku), sizeof(Buku)))
+    while (fread(&buku, sizeof(Buku), 1, file))
     {
-        daftarBuku.push_back(buku);
+        daftarBuku[count++] = buku;
     }
-    file.close();
+    fclose(file);
 
     // Bubble Sort berdasarkan ID
-    for (size_t i = 0; i < daftarBuku.size() - 1; i++)
+    for (int i = 0; i < count - 1; i++)
     {
-        for (size_t j = 0; j < daftarBuku.size() - i - 1; j++)
+        for (int j = 0; j < count - i - 1; j++)
         {
             if (daftarBuku[j].id > daftarBuku[j + 1].id)
             {
-                swap(daftarBuku[j], daftarBuku[j + 1]);
+                Buku temp = daftarBuku[j];
+                daftarBuku[j] = daftarBuku[j + 1];
+                daftarBuku[j + 1] = temp;
             }
         }
     }
 
     cout << "\nDaftar Buku:\n";
-    for (const auto &b : daftarBuku)
+    for (int i = 0; i < count; i++)
     {
-        cout << "ID: " << b.id << " | Judul: " << b.judul << " | Penulis: " << b.penulis << " | Stok: " << b.stok << "\n";
+        cout << "ID: " << daftarBuku[i].id << " | Judul: " << daftarBuku[i].judul 
+             << " | Penulis: " << daftarBuku[i].penulis << " | Stok: " << daftarBuku[i].stok << "\n";
     }
 }
 
@@ -86,23 +86,41 @@ void cariBuku()
 {
     char keyword[100];
     Buku buku;
-    ifstream file("data.dat", ios::binary);
+    FILE* file = fopen("data.dat", "rb");
     bool ditemukan = false;
 
     cout << "Masukkan kata kunci judul: ";
     cin.ignore();
     cin.getline(keyword, 100);
 
-    while (file.read(reinterpret_cast<char *>(&buku), sizeof(Buku)))
+    while (fread(&buku, sizeof(Buku), 1, file))
     {
-        if (strstr(buku.judul, keyword))
+        bool match = false;
+        char* ptr = buku.judul;
+        char* keyptr = keyword;
+        
+        while (*ptr && *keyptr) {
+            if (tolower(*ptr) == tolower(*keyptr)) {
+                ptr++;
+                keyptr++;
+            } else {
+                break;
+            }
+        }
+        
+        if (*keyptr == '\0') {
+            match = true;
+        }
+
+        if (match)
         {
             cout << "Buku ditemukan!\n";
-            cout << "ID: " << buku.id << " | Judul: " << buku.judul << " | Penulis: " << buku.penulis << " | Stok: " << buku.stok << "\n";
+            cout << "ID: " << buku.id << " | Judul: " << buku.judul 
+                 << " | Penulis: " << buku.penulis << " | Stok: " << buku.stok << "\n";
             ditemukan = true;
         }
     }
-    file.close();
+    fclose(file);
 
     if (!ditemukan)
     {
@@ -113,28 +131,29 @@ void cariBuku()
 void hapusBuku()
 {
     int idHapus;
-    vector<Buku> daftarBuku;
     Buku buku;
-    ifstream file("data.dat", ios::binary);
+    FILE* file = fopen("data.dat", "rb");
+    Buku daftarBuku[100];
+    int count = 0;
 
     cout << "Masukkan ID buku yang ingin dihapus: ";
     cin >> idHapus;
 
-    while (file.read(reinterpret_cast<char *>(&buku), sizeof(Buku)))
+    while (fread(&buku, sizeof(Buku), 1, file))
     {
         if (buku.id != idHapus)
         {
-            daftarBuku.push_back(buku);
+            daftarBuku[count++] = buku;
         }
     }
-    file.close();
+    fclose(file);
 
-    ofstream outFile("data.dat", ios::binary | ios::trunc);
-    for (const auto &b : daftarBuku)
+    file = fopen("data.dat", "wb");
+    for (int i = 0; i < count; i++)
     {
-        outFile.write(reinterpret_cast<const char *>(&b), sizeof(Buku));
+        fwrite(&daftarBuku[i], sizeof(Buku), 1, file);
     }
-    outFile.close();
+    fclose(file);
 
     cout << "Buku berhasil dihapus jika ID ditemukan.\n";
 }
